@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game 24 Student Tracker</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- html2canvas for Export -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .animate-bounce-short { animation: bounce-short 0.5s ease-in-out 1; }
+        @keyframes bounce-short {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .emoji-icon { line-height: 1; display: inline-block; }
+        
+        /* Styles for Exporting */
+        .exporting .no-export { display: none !important; }
+        .exporting { 
+            background-color: white; 
+            padding: 30px; /* Increased padding for better look */
+            border-radius: 0;
+            width: 800px !important; /* Fixed width for consistent export */
+            margin: 0 auto;
+        }
+        /* Hide scrollbar when exporting */
+        .exporting ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <!-- App Container -->
+    <div id="app" class="max-w-lg mx-auto min-h-screen flex flex-col relative">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="absolute inset-0 bg-gray-50 z-50 flex flex-col items-center justify-center gap-4">
+            <i data-lucide="loader-2" class="animate-spin text-indigo-600 w-12 h-12"></i>
+            <p class="text-gray-500">กำลังโหลดข้อมูลนักเรียน...</p>
+        </div>
+
+        <!-- Loading Overlay for Export/Share -->
+        <div id="export-loading" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex flex-col items-center justify-center gap-4 hidden">
+            <div class="bg-white p-6 rounded-2xl flex flex-col items-center shadow-2xl">
+                <i data-lucide="loader-2" class="animate-spin text-indigo-600 w-10 h-10 mb-2"></i>
+                <p class="text-gray-800 font-bold">กำลังสร้างรูปภาพคุณภาพสูง...</p>
+                <p class="text-xs text-gray-500">กรุณารอสักครู่</p>
+            </div>
+        </div>
+
+        <!-- Dynamic Content -->
+        <div id="main-content" class="flex-1 flex flex-col p-4 hidden"></div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        // --- Firebase Config ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJsk4l8I8uCYpJY8jZLAlRW1w2qLWN-2o",
+            authDomain: "game24-69666.firebaseapp.com",
+            projectId: "game24-69666",
+            storageBucket: "game24-69666.firebasestorage.app",
+            messagingSenderId: "989271279576",
+            appId: "1:989271279576:web:43115bbaeeae31160954ad",
+            measurementId: "G-B1ZTE90SGG"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'game24-default-app';
+        
+        // --- Configuration ---
+        const DIFFICULTY_CONFIG = {
+            very_easy: { label: "ง่ายมาก", color: "bg-green-100 text-green-800", border: "border-green-500", icon: "🌱", range: [1, 3] },
+            easy: { label: "ง่าย", color: "bg-blue-100 text-blue-800", border: "border-blue-500", icon: "⭐", range: [4, 6] },
+            medium: { label: "ปานกลาง", color: "bg-yellow-100 text-yellow-800", border: "border-yellow-500", icon: "⚖️", range: [7, 10] },
+            hard: { label: "ยาก", color: "bg-orange-100 text-orange-800", border: "border-orange-500", icon: "🔥", range: [11, 15] },
+            very_hard: { label: "ยากมาก", color: "bg-red-100 text-red-800", border: "border-red-500", icon: "☠️", range: [16, 999] }
+        };
+
+        const EMPTY_DATA = { very_easy: [], easy: [], medium: [], hard: [], very_hard: [] };
+
+        // --- Helper: Get Level Based on Specific Day Index ---
+        function getLevelFromDayIndex(dayIndex) {
+            if (dayIndex <= 3) return null; // Safe zone
+            if (dayIndex <= 6) return 'easy';
+            if (dayIndex <= 10) return 'medium';
+            if (dayIndex <= 15) return 'hard';
+            return 'very_hard';
+        }
+
+        // --- State Management ---
+        let state = {
+            user: null,
+            view: 'home', 
+            currentLevel: null,
+            questionSets: { ...EMPTY_DATA },
+            usedQuestions: { ...EMPTY_DATA },
+            students: [], 
+            currentStudentId: null,
+            currentCard: null,
+            editLevel: 'medium',
+            editInput: '',
+            studentNameInput: '',
+            studentDaysInput: '',
+            studentLeaveInput: '', 
+            isSaving: false,
+            managingLevel: null,
+            isExporting: false
+        };
+
+        // --- Helper to get current student object ---
+        function getCurrentStudent() {
+            if (!state.currentStudentId) return null;
+            return state.students.find(s => s.id === state.currentStudentId) || null;
+        }
+
+        // --- Render Functions ---
+        function render() {
+            const content = document.getElementById('main-content');
+            if (!content) return; // Safety check
+            
+            content.innerHTML = '';
+            // Re-run icons immediately after render
+            setTimeout(() => lucide.createIcons(), 0);
+
+            if (state.view === 'home') renderHome(content);
+            else if (state.view === 'students') renderStudentList(content);
+            else if (state.view === 'game') renderGame(content);
+            else if (state.view === 'admin') renderAdmin(content);
+            else if (state.view === 'manage_list') renderManageList(content);
+            
+            content.classList.remove('hidden');
+            const loading = document.getElementById('loading-screen');
+            if(loading) loading.classList.add('hidden');
+        }
+
+        function renderHome(container) {
+            container.innerHTML = `
+                <header class="flex flex-col items-center justify-center mb-10 pt-8">
+                    <div class="bg-indigo-600 p-4 rounded-2xl shadow-lg mb-4 transform -rotate-3">
+                        <i data-lucide="graduation-cap" class="text-white w-12 h-12"></i>
+                    </div>
+                    <h1 class="text-3xl font-extrabold text-indigo-900">Game 24 Tracker</h1>
+                    <p class="text-gray-500 text-sm mt-2">ระบบติดตามและฝึกฝนนักเรียนขาดเรียน</p>
+                </header>
+
+                <div class="grid gap-4">
+                    <button onclick="window.appActions.setView('students')" 
+                        class="w-full bg-white border-2 border-indigo-100 hover:border-indigo-500 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
+                        <div class="bg-indigo-100 p-3 rounded-full group-hover:bg-indigo-600 transition-colors">
+                            <i data-lucide="users" class="w-8 h-8 text-indigo-600 group-hover:text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <h2 class="text-xl font-bold text-gray-800">รายชื่อนักเรียน</h2>
+                            <p class="text-sm text-gray-500">เลือกนักเรียนเพื่อเริ่มฝึกตามระดับ</p>
+                        </div>
+                    </button>
+
+                    <button onclick="window.appActions.setView('admin')" 
+                        class="w-full bg-white border-2 border-gray-100 hover:border-gray-400 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
+                        <div class="bg-gray-100 p-3 rounded-full group-hover:bg-gray-600 transition-colors">
+                            <i data-lucide="settings" class="w-8 h-8 text-gray-600 group-hover:text-white"></i>
+                        </div>
+                        <div class="text-left">
+                            <h2 class="text-xl font-bold text-gray-800">จัดการคลังโจทย์</h2>
+                            <p class="text-sm text-gray-500">เพิ่มหรือลบชุดตัวเลขในระบบ</p>
+                        </div>
+                    </button>
+                </div>
+                
+                <div class="mt-8 bg-blue-50 p-4 rounded-xl text-sm text-blue-800 border border-blue-200">
+                    <h3 class="font-bold flex items-center gap-2 mb-2"><i data-lucide="trending-up" class="w-4 h-4"></i> การไต่ระดับความยาก</h3>
+                    <ul class="space-y-1 ml-5 list-disc text-blue-700">
+                        <li>ขาด 1-3 วัน : <span class="text-green-600 font-bold">ปลอดภัย</span></li>
+                        <li>ขาดวันที่ 4-6 : โจทย์ง่าย</li>
+                        <li>ขาดวันที่ 7-10 : โจทย์ปานกลาง</li>
+                        <li>ขาดวันที่ 11-15 : โจทย์ยาก</li>
+                        <li>ขาดวันที่ 16+ : โจทย์ยากมาก</li>
+                        <li class="font-bold text-indigo-700 mt-2">* วันลา: ไม่ต้องซ่อม แต่จะนับรวมเพื่อคำนวณระดับความยาก</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function renderStudentList(container) {
+            // Sorting Logic
+            const safeStudents = state.students.filter(s => s.absentDays <= 3);
+            const repairStudents = state.students.filter(s => s.absentDays > 3);
+            repairStudents.sort((a, b) => b.absentDays - a.absentDays);
+            safeStudents.sort((a, b) => b.absentDays - a.absentDays);
+
+            const renderStudentItem = (s, isSafe) => {
+                const leaveDays = s.leaveDays || 0;
+                const absentDays = s.absentDays || 0;
+                
+                // Calculate Level Index: Current clearing + Leave days (Leaves push the difficulty up)
+                const currentClearingDay = s.currentClearingDay || 4;
+                const effectiveDayIndex = currentClearingDay + leaveDays;
+                
+                // Repair count is strictly absentDays - 3 (Safe zone)
+                const repairsNeeded = Math.max(0, absentDays - 3);
+
+                return `
+                <div class="bg-white border rounded-xl p-4 shadow-sm flex justify-between items-center mb-3 hover:shadow-md transition-shadow">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="font-bold text-lg text-gray-800 cursor-pointer hover:text-indigo-600" onclick="window.appActions.editStudent('${s.id}', '${s.name}', ${s.absentDays}, ${leaveDays})">
+                                ${s.name} <i data-lucide="pencil" class="inline w-3 h-3 text-gray-300 hover:text-gray-500 ml-1 no-export"></i>
+                            </h3>
+                        </div>
+                        <div class="text-sm flex flex-col gap-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="${isSafe ? 'text-green-600' : 'text-red-600'} font-bold">
+                                    ขาด ${absentDays} วัน
+                                </span>
+                                <button onclick="window.appActions.adjustDays('${s.id}', 'absent', 1)" class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs border no-export active:bg-gray-300 transition-colors" title="เพิ่มวันขาด">+1</button>
+
+                                ${!isSafe ? `
+                                   <span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full border border-orange-200 ml-1">
+                                     เหลือต้องซ่อม ${repairsNeeded} ครั้ง
+                                   </span>
+                                ` : '<i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i> (ปลอดภัย)'}
+                            </div>
+                            <div class="text-gray-500 text-xs flex items-center gap-1">
+                                <i data-lucide="calendar-off" class="w-3 h-3"></i> ลา ${leaveDays} วัน
+                                <button onclick="window.appActions.adjustDays('${s.id}', 'leave', 1)" class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px] border no-export active:bg-gray-300 transition-colors" title="เพิ่มวันลา">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 border-l pl-3 ml-2 no-export">
+                            ${!isSafe ? `
+                            <button onclick="window.appActions.selectStudent('${s.id}')" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 shadow-sm" title="เริ่มเล่น">
+                                <i data-lucide="play" class="w-5 h-5"></i>
+                            </button>
+                            ` : ''}
+                            <button onclick="window.appActions.deleteStudent('${s.id}')" class="text-gray-400 hover:text-red-500 p-2" title="ลบชื่อ">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                    </div>
+                </div>
+                `;
+            };
+
+            const repairHtml = repairStudents.length > 0 
+                ? repairStudents.map(s => renderStudentItem(s, false)).join('') 
+                : `<div class="text-center text-gray-400 py-4 bg-gray-50 rounded-lg border border-dashed">ไม่มีนักเรียนที่ต้องซ่อม</div>`;
+
+            const safeHtml = safeStudents.length > 0
+                ? safeStudents.map(s => renderStudentItem(s, true)).join('')
+                : `<div class="text-center text-gray-400 py-4">ไม่มีนักเรียนที่ปลอดภัย</div>`;
+
+            container.innerHTML = `
+                <div class="flex flex-col gap-4 mb-6 no-export">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <button onclick="window.appActions.setView('home')" class="p-2 hover:bg-gray-200 rounded-full bg-white shadow-sm"><i data-lucide="arrow-left"></i></button>
+                            <h1 class="text-2xl font-bold text-gray-800">จัดการรายชื่อ</h1>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2 w-full">
+                         <button onclick="window.appActions.captureAndShare('share')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 font-bold transition-all active:scale-95">
+                            <i data-lucide="share-2"></i> แชร์ภาพ
+                        </button>
+                        <button onclick="window.appActions.captureAndShare('download')" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 font-bold transition-all active:scale-95">
+                            <i data-lucide="download"></i> บันทึก
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Student Form (Hidden during Export) -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border mb-8 no-export">
+                    <h3 class="font-bold text-gray-700 mb-3 flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> เพิ่มนักเรียนใหม่</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="new-name" placeholder="ชื่อ-สกุล" class="flex-grow border rounded-lg px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none" 
+                            oninput="window.appActions.updateStudentInput('name', this.value)" value="${state.studentNameInput}">
+                    </div>
+                    <div class="flex gap-2 mb-2">
+                        <input type="number" id="new-days" placeholder="วันขาด" class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none" 
+                            oninput="window.appActions.updateStudentInput('days', this.value)" value="${state.studentDaysInput}">
+                        <input type="number" id="new-leave" placeholder="วันลา (ถ้ามี)" class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none" 
+                            oninput="window.appActions.updateStudentInput('leave', this.value)" value="${state.studentLeaveInput}">
+                    </div>
+                    <button onclick="window.appActions.addStudent()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+
+                <!-- Capture Area -->
+                <div id="capture-area" class="space-y-6 bg-gray-50 p-2 rounded-xl">
+                    <!-- Header for Export -->
+                    <div class="text-center mb-6 pt-4">
+                        <div class="flex justify-center mb-2">
+                            <div class="bg-indigo-600 p-3 rounded-xl transform -rotate-3 shadow-md">
+                                <i data-lucide="graduation-cap" class="text-white w-8 h-8"></i>
+                            </div>
+                        </div>
+                        <h1 class="text-3xl font-extrabold text-indigo-900">ภารกิจพิชิตเกม 24</h1>
+                        <p class="text-gray-500 text-sm">สรุปสถานะการฝึกฝนนักเรียน</p>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-red-600 mb-3 px-1 flex items-center gap-2 bg-red-50 p-2 rounded-lg inline-block">
+                            <i data-lucide="alert-circle" class="w-5 h-5"></i> ต้องซ่อมกิจกรรม (${repairStudents.length})
+                        </h3>
+                        <div class="space-y-2">
+                            ${repairHtml}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="font-bold text-green-600 mb-3 px-1 flex items-center gap-2 border-t pt-6 inline-block">
+                            <i data-lucide="shield-check" class="w-5 h-5"></i> ผ่านเกณฑ์ / ปลอดภัย (${safeStudents.length})
+                        </h3>
+                         <div class="space-y-2">
+                            ${safeHtml}
+                        </div>
+                    </div>
+                    
+                    <div class="text-center text-gray-400 text-xs mt-8 pb-4 border-t pt-4">
+                        ข้อมูล ณ วันที่ ${new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderGame(container) {
+            const currentStudent = getCurrentStudent(); 
+            if (!currentStudent) { window.appActions.setView('students'); return; }
+
+            const absentDays = currentStudent.absentDays || 0;
+            const leaveDays = currentStudent.leaveDays || 0;
+            const repairsNeeded = Math.max(0, absentDays - 3);
+            const currentClearingDay = currentStudent.currentClearingDay || 4;
+            
+            // Difficulty considers Leave Days (skips levels)
+            const effectiveDayIndex = currentClearingDay + leaveDays;
+            const levelKey = getLevelFromDayIndex(effectiveDayIndex);
+            
+            if (repairsNeeded <= 0) {
+                alert("นักเรียนคนนี้ผ่านเกณฑ์แล้ว (วันขาดไม่เกิน 3 วัน)");
+                window.appActions.setView('students');
+                return;
+            }
+
+            const config = DIFFICULTY_CONFIG[levelKey];
+            const totalInPool = state.questionSets[levelKey]?.length || 0;
+            const usedInPool = state.usedQuestions[levelKey]?.length || 0;
+            const remainingInPool = Math.max(0, totalInPool - usedInPool);
+
+            let cardHtml = '';
+            if (state.currentCard) {
+                const nums = state.currentCard.split(' ');
+                cardHtml = `
+                    <div class="grid grid-cols-2 gap-4 max-w-xs mx-auto mt-6">
+                        ${nums.map(n => `
+                            <div class="aspect-square flex items-center justify-center bg-white border-4 border-indigo-600 rounded-2xl shadow-lg text-4xl sm:text-6xl font-bold text-indigo-900 animate-bounce-short">
+                                ${n}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                cardHtml = `<div class="text-gray-400 font-medium text-center">พร้อมแล้วกด "สุ่มโจทย์"<br>เพื่อเริ่มลดจำนวนวันขาด</div>`;
+            }
+
+            container.innerHTML = `
+                <div class="p-4 shadow-sm bg-white border-b-4 ${config.border.replace('border', 'border-b')} mb-4 rounded-b-2xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <button onclick="window.appActions.setView('students')" class="p-2 hover:bg-gray-100 rounded-full"><i data-lucide="arrow-left"></i></button>
+                        <span class="font-bold text-gray-500">กำลังเล่น: ${currentStudent.name}</span>
+                        <div class="w-8"></div>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <div class="text-xs text-gray-400 mb-1">ซ่อมของวันที่ <span class="text-indigo-600 font-bold text-lg">#${effectiveDayIndex}</span> <span class="text-xs text-gray-400">(รวมวันลา)</span></div>
+                            <div class="font-bold text-xl ${config.color.split(' ')[1]} flex items-center gap-1">
+                                ${config.icon} ${config.label}
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-400">เหลือต้องซ่อม</div>
+                            <div class="font-bold text-3xl text-red-600">${repairsNeeded} <span class="text-sm text-gray-400 font-normal">ครั้ง</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center max-w-lg mx-auto w-full">
+                    
+                    ${remainingInPool === 0 ? `
+                        <div class="w-full bg-red-50 border border-red-200 rounded-xl p-4 text-center mb-4">
+                            <p class="text-red-600 font-bold">โจทย์ในคลังระดับนี้หมดแล้ว!</p>
+                            <button onclick="window.appActions.goToAdminWithLevel('${levelKey}')" class="text-sm underline text-red-800 mt-1">ไปเพิ่มโจทย์</button>
+                        </div>
+                    ` : ''}
+
+                    <div class="w-full min-h-[250px] flex items-center justify-center bg-slate-200 rounded-3xl p-6 mb-6 relative shadow-inner">
+                        ${cardHtml}
+                    </div>
+
+                    <div class="grid gap-3 w-full">
+                        <button onclick="window.appActions.randomQuestion()" ${remainingInPool === 0 ? 'disabled' : ''}
+                            class="w-full py-3 rounded-xl text-lg font-bold bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 ${remainingInPool === 0 ? 'opacity-50 cursor-not-allowed' : ''}">
+                            <i data-lucide="dice-5"></i> สุ่มโจทย์ใหม่
+                        </button>
+
+                        <button onclick="window.appActions.studentPass()" ${!state.currentCard ? 'disabled' : ''}
+                            class="w-full py-4 rounded-xl text-xl font-bold text-white shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2
+                            ${!state.currentCard ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}">
+                            <i data-lucide="check-circle-2"></i> ผ่าน (ลดวันขาด 1 วัน)
+                        </button>
+                    </div>
+
+                    <p class="mt-6 text-xs text-gray-400 text-center">
+                        * เมื่อผ่านแล้ว ระบบจะขยับไปซ่อมวันที่ ${effectiveDayIndex + 1} (ยากขึ้นตามลำดับ)
+                    </p>
+                </div>
+            `;
+        }
+
+        function renderAdmin(container) {
+            let levelButtons = '';
+            for (const [key, config] of Object.entries(DIFFICULTY_CONFIG)) {
+                const isSelected = state.editLevel === key;
+                levelButtons += `
+                    <button onclick="window.appActions.setEditLevel('${key}')" 
+                        class="px-3 py-2 rounded-lg border transition-all flex items-center gap-1 text-sm ${isSelected ? config.color + ' ring-2 ring-offset-1 ring-indigo-500 border-transparent font-bold' : 'bg-gray-50 text-gray-600 border-gray-200'}">
+                        <span>${config.icon}</span> ${config.label}
+                    </button>
+                `;
+            }
+
+            let statsHtml = '';
+            for (const [key, config] of Object.entries(DIFFICULTY_CONFIG)) {
+                const count = state.questionSets[key] ? state.questionSets[key].length : 0;
+                statsHtml += `
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 cursor-pointer" onclick="window.appActions.manageLevel('${key}')">
+                        <span class="flex items-center gap-2 text-sm font-medium text-gray-600">
+                            <span>${config.icon}</span> ${config.label}
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-white border px-2 py-0.5 rounded text-gray-800 font-mono text-xs">${count} ข้อ</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="flex items-center gap-4 mb-6">
+                    <button onclick="window.appActions.setView('home')" class="p-2 hover:bg-gray-200 rounded-full bg-white shadow-sm"><i data-lucide="arrow-left"></i></button>
+                    <h1 class="text-2xl font-bold text-gray-800">คลังโจทย์</h1>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border mb-6">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 font-bold mb-2">1. เลือกระดับที่จะเพิ่ม</label>
+                        <div class="flex flex-wrap gap-2">${levelButtons}</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-gray-700 font-bold mb-2">2. ใส่ชุดตัวเลข (บรรทัดละ 1 ข้อ)</label>
+                        <div class="relative">
+                            <textarea oninput="window.appActions.setEditInput(this.value)"
+                                class="w-full h-32 p-4 border rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono bg-gray-50"
+                                placeholder="เช่น:\n4 4 4 4\n5 6 7 8">${state.editInput}</textarea>
+                        </div>
+                    </div>
+
+                    <button onclick="window.appActions.addQuestions()" id="save-btn"
+                        class="w-full text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md ${state.isSaving || !state.editInput.trim() ? 'bg-gray-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}">
+                        ${state.isSaving ? '<i data-lucide="loader-2" class="animate-spin"></i>' : '<i data-lucide="save"></i> บันทึกข้อมูล'}
+                    </button>
+                </div>
+                
+                <div class="border-t pt-4">
+                    <h3 class="font-bold text-gray-700 mb-3 text-sm">จัดการโจทย์ในระบบ</h3>
+                    <div class="grid grid-cols-1 gap-2">${statsHtml}</div>
+                </div>
+            `;
+        }
+
+        function renderManageList(container) {
+            const levelKey = state.managingLevel;
+            const config = DIFFICULTY_CONFIG[levelKey];
+            const questions = state.questionSets[levelKey] || [];
+
+            const listHtml = questions.length === 0 
+                ? `<div class="text-center py-8 text-gray-400">ว่างเปล่า</div>`
+                : questions.map(q => `
+                    <div class="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm mb-2">
+                        <div class="font-mono font-bold text-gray-700">${q}</div>
+                        <button onclick="window.appActions.deleteQuestion('${levelKey}', '${q}')" class="text-gray-400 hover:text-red-600 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                `).join('');
+
+            container.innerHTML = `
+                <div class="flex items-center gap-4 mb-4 bg-gray-50 sticky top-0 py-2 z-10">
+                    <button onclick="window.appActions.setView('admin')" class="p-2 hover:bg-gray-200 rounded-full bg-white shadow-sm"><i data-lucide="arrow-left"></i></button>
+                    <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                         จัดการ <span class="${config.color.split(' ')[1]}">${config.label}</span>
+                    </h1>
+                </div>
+                <div class="pb-10">${listHtml}</div>
+            `;
+        }
+
+        // --- Logic & Actions ---
+        window.appActions = {
+            setView: (view) => {
+                state.view = view;
+                render();
+            },
+            
+            updateStudentInput: (field, value) => {
+                if(field === 'name') state.studentNameInput = value;
+                if(field === 'days') state.studentDaysInput = value;
+                if(field === 'leave') state.studentLeaveInput = value;
+            },
+
+            addStudent: async () => {
+                const nameEl = document.getElementById('new-name');
+                const daysEl = document.getElementById('new-days');
+                const leaveEl = document.getElementById('new-leave');
+                
+                const name = nameEl ? nameEl.value.trim() : state.studentNameInput.trim();
+                const days = daysEl ? parseInt(daysEl.value) : parseInt(state.studentDaysInput);
+                const leave = leaveEl ? (parseInt(leaveEl.value) || 0) : (parseInt(state.studentLeaveInput) || 0);
+                
+                if (!name || isNaN(days)) { alert("กรุณากรอกข้อมูลให้ครบถ้วน"); return; }
+                
+                // currentClearingDay starts at 4 (because 1-3 are safe)
+                const newStudent = { 
+                    id: crypto.randomUUID(), 
+                    name, 
+                    absentDays: days, 
+                    leaveDays: leave,
+                    currentClearingDay: 4 
+                };
+                
+                state.students.push(newStudent);
+                state.studentNameInput = ''; 
+                state.studentDaysInput = '';
+                state.studentLeaveInput = '';
+                if(nameEl) nameEl.value = '';
+                if(daysEl) daysEl.value = '';
+                if(leaveEl) leaveEl.value = '';
+                
+                render();
+
+                try {
+                    const studentsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'students_doc');
+                    await setDoc(studentsRef, { list: state.students }); 
+                } catch (e) {
+                    console.error(e);
+                    alert("บันทึกไม่สำเร็จ");
+                }
+            },
+            deleteStudent: async (id) => {
+                if(!confirm("ต้องการลบชื่อนี้ใช่ไหม?")) return;
+                state.students = state.students.filter(s => s.id !== id);
+                render();
+                try {
+                    const studentsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'students_doc');
+                    await setDoc(studentsRef, { list: state.students });
+                } catch(e) { console.error(e); }
+            },
+            editStudent: async (id, oldName, oldDays, oldLeave) => {
+                const newName = prompt("แก้ไขชื่อนักเรียน:", oldName);
+                if(newName === null) return;
+                
+                const newDaysStr = prompt("แก้ไขจำนวนวันขาด (ไม่รวมวันลา):", oldDays);
+                if(newDaysStr === null) return;
+
+                const newLeaveStr = prompt("แก้ไขจำนวนวันลา:", oldLeave);
+                if(newLeaveStr === null) return;
+
+                if(newName.trim() !== "" && !isNaN(newDaysStr) && !isNaN(newLeaveStr)) {
+                    const student = state.students.find(s => s.id === id);
+                    if(student) {
+                        student.name = newName.trim();
+                        student.absentDays = parseInt(newDaysStr);
+                        student.leaveDays = parseInt(newLeaveStr);
+                        render();
+                        try {
+                            const studentsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'students_doc');
+                            await setDoc(studentsRef, { list: state.students });
+                        } catch(e) { console.error(e); }
+                    }
+                }
+            },
+            // NEW: Optimistic Update Logic
+            adjustDays: async (id, type, amount) => {
+                // 1. Find Index to update correctly
+                const index = state.students.findIndex(s => s.id === id);
+                if (index === -1) return;
+
+                // 2. Clone to ensure reactivity detection and safety
+                const student = { ...state.students[index] };
+                
+                // 3. Update Values (Force Number type to avoid string concatenation issues)
+                if (type === 'absent') {
+                    const current = Number(student.absentDays) || 0;
+                    student.absentDays = Math.max(0, current + amount);
+                }
+                if (type === 'leave') {
+                    const current = Number(student.leaveDays) || 0;
+                    student.leaveDays = Math.max(0, current + amount);
+                }
+
+                // 4. Update State Array
+                state.students[index] = student;
+
+                // 5. Render Immediately (Force UI Update)
+                render();
+
+                // 6. Save to Firebase
+                try {
+                    const studentsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'students_doc');
+                    await setDoc(studentsRef, { list: state.students });
+                } catch(e) { 
+                    console.error("Save failed", e);
+                }
+            },
+            selectStudent: (id) => {
+                state.currentStudentId = id;
+                state.currentCard = null;
+                state.view = 'game';
+                render();
+            },
+            
+            randomQuestion: async () => {
+                const currentStudent = getCurrentStudent();
+                if (!currentStudent) return;
+                
+                const currentClearingDay = currentStudent.currentClearingDay || 4;
+                const effectiveDayIndex = currentClearingDay + (currentStudent.leaveDays || 0);
+                const level = getLevelFromDayIndex(effectiveDayIndex);
+
+                const currentSet = state.questionSets[level] || [];
+                const currentUsed = state.usedQuestions[level] || [];
+                const pool = currentSet.filter(q => !currentUsed.includes(q));
+
+                if (pool.length === 0) { alert("โจทย์หมดแล้ว!"); return; }
+
+                const selected = pool[Math.floor(Math.random() * pool.length)];
+                state.currentCard = selected;
+                
+                if(!state.usedQuestions[level]) state.usedQuestions[level] = [];
+                state.usedQuestions[level].push(selected);
+                render();
+
+                try {
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'global_progress');
+                    await updateDoc(globalRef, { [`used.${level}`]: arrayUnion(selected) });
+                } catch(e) { console.error(e); }
+            },
+
+            studentPass: async () => {
+                const studentIndex = state.students.findIndex(s => s.id === state.currentStudentId);
+                if (studentIndex === -1) return;
+
+                const student = state.students[studentIndex];
+                
+                // Decrease Unexcused Absences
+                student.absentDays = Math.max(0, student.absentDays - 1);
+                
+                // Increment clearing day (moves forward in timeline)
+                student.currentClearingDay = (student.currentClearingDay || 4) + 1;
+
+                state.currentCard = null;
+                
+                render(); 
+
+                try {
+                    const studentsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'students_doc');
+                    await setDoc(studentsRef, { list: state.students });
+                } catch(e) { console.error(e); }
+            },
+
+            // Combined Capture and Share/Download Function
+            captureAndShare: (mode = 'download') => {
+                const element = document.getElementById('capture-area');
+                const loadingOverlay = document.getElementById('export-loading');
+                if(!element) return;
+
+                // Show loading
+                loadingOverlay.classList.remove('hidden');
+                
+                // Toggle export mode styles
+                element.classList.add('exporting');
+                
+                // Delay slightly to allow DOM to update with 'exporting' class (remove hidden elements)
+                setTimeout(() => {
+                    html2canvas(element, { 
+                        scale: 4, // High Resolution
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        scrollY: -window.scrollY, // Fix scroll issues
+                        onclone: (clonedDoc) => {
+                            // Additional cleanups in clone if needed
+                            const clonedElement = clonedDoc.getElementById('capture-area');
+                            clonedElement.style.width = '800px'; // Enforce width in clone
+                            clonedElement.style.padding = '40px'; 
+                        }
+                    }).then(canvas => {
+                        element.classList.remove('exporting');
+                        loadingOverlay.classList.add('hidden');
+
+                        canvas.toBlob(async (blob) => {
+                            if (!blob) {
+                                alert("เกิดข้อผิดพลาดในการสร้างรูปภาพ");
+                                return;
+                            }
+
+                            const fileName = `game24-stats-${new Date().getTime()}.png`;
+                            const file = new File([blob], fileName, { type: "image/png" });
+
+                            if (mode === 'share') {
+                                // Check if Web Share API is supported and can share files
+                                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                    try {
+                                        await navigator.share({
+                                            title: 'ผลการฝึก Game 24',
+                                            text: 'สรุปสถานะการฝึกฝนนักเรียน Game 24 Tracker',
+                                            files: [file]
+                                        });
+                                    } catch (err) {
+                                        if (err.name !== 'AbortError') {
+                                            console.error("Share failed:", err);
+                                            alert("แชร์ไม่สำเร็จ: " + err.message);
+                                        }
+                                    }
+                                } else {
+                                    // Fallback for desktop or unsupported browsers
+                                    alert("อุปกรณ์นี้ไม่รองรับการแชร์โดยตรง ระบบจะบันทึกรูปลงเครื่องแทน");
+                                    saveAs(canvas.toDataURL('image/png'), fileName);
+                                }
+                            } else {
+                                // Download Mode
+                                saveAs(canvas.toDataURL('image/png'), fileName);
+                            }
+                        }, 'image/png'); // PNG format
+                    }).catch(err => {
+                        console.error(err);
+                        element.classList.remove('exporting');
+                        loadingOverlay.classList.add('hidden');
+                        alert("เกิดข้อผิดพลาด: " + err.message);
+                    });
+                }, 100);
+            },
+            
+            // Legacy wrapper for compatibility
+            exportImage: () => window.appActions.captureAndShare('download'),
+
+            // Admin Actions
+            setEditLevel: (l) => { state.editLevel = l; render(); },
+            setEditInput: (v) => { state.editInput = v; render(); },
+            manageLevel: (l) => { state.managingLevel = l; state.view = 'manage_list'; render(); },
+            goToAdminWithLevel: (l) => { state.editLevel = l; state.view = 'admin'; render(); },
+            
+            addQuestions: async () => {
+                if(!state.editInput.trim()) return;
+                state.isSaving = true; render();
+                const newQs = state.editInput.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+                if(newQs.length===0) { state.isSaving=false; render(); return; }
+                try {
+                    const setsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'questions');
+                    await updateDoc(setsRef, { [state.editLevel]: arrayUnion(...newQs) });
+                    state.editInput = ''; alert("เพิ่มเรียบร้อย");
+                } catch(e) { alert("Error"); console.error(e); }
+                finally { state.isSaving=false; render(); }
+            },
+            deleteQuestion: async (level, qStr) => {
+                if(!confirm("ลบโจทย์นี้?")) return;
+                state.questionSets[level] = state.questionSets[level].filter(q => q !== qStr);
+                render();
+                try {
+                    const setsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'questions');
+                    await updateDoc(setsRef, { [level]: arrayRemove(qStr) });
+                } catch(e) { console.error(e); }
+            }
+        };
+
+        // Helper function for downloading
+        function saveAs(uri, filename) {
+            const link = document.createElement('a');
+            if (typeof link.download === 'string') {
+                link.href = uri;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                window.open(uri);
+            }
+        }
+
+        // --- Initialization ---
+        const init = async () => {
+             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                 try { await signInWithCustomToken(auth, __initial_auth_token); } 
+                 catch (e) { await signInAnonymously(auth); }
+            } else { await signInAnonymously(auth); }
+        };
+        init();
+
+        onAuthStateChanged(auth, (user) => {
+            state.user = user;
+            if (user) {
+                const setsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'questions');
+                onSnapshot(setsRef, (s) => {
+                    if (s.exists()) state.questionSets = s.data();
+                    else setDoc(setsRef, EMPTY_DATA);
+                    render();
+                });
+                const globalRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'global_progress');
+                onSnapshot(globalRef, (s) => {
+                    if (s.exists()) {
+                         const d = s.data();
+                         if (d.used) state.usedQuestions = { ...state.usedQuestions, ...d.used };
+                    } else setDoc(globalRef, { used: EMPTY_DATA });
+                    render();
+                });
+                const studentsRef = doc(db, 'artifacts', appId, 'public', 'data', 'game24_storage', 'students_doc');
+                onSnapshot(studentsRef, (s) => {
+                    if (s.exists() && s.data().list) {
+                        state.students = s.data().list;
+                    } else {
+                        state.students = [];
+                        setDoc(studentsRef, { list: [] });
+                    }
+                    render();
+                });
+            }
+        });
+        
+        render();
+    </script>
+</body>
+</html>
