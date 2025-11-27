@@ -78,6 +78,19 @@
             <p class="text-gray-500">กำลังโหลดข้อมูลนักเรียน...</p>
         </div>
 
+        <!-- Safety Script: Force remove loading screen if it takes too long -->
+        <script>
+            setTimeout(() => {
+                const loading = document.getElementById('loading-screen');
+                const content = document.getElementById('main-content');
+                if (loading && !loading.classList.contains('hidden')) {
+                    console.warn("Force hiding loading screen due to timeout");
+                    loading.classList.add('hidden');
+                    if (content) content.classList.remove('hidden');
+                }
+            }, 3000); // Force open after 3 seconds
+        </script>
+
         <!-- Loading Overlay for Export -->
         <div id="export-loading" class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex flex-col items-center justify-center gap-4 hidden">
             <div class="bg-white p-6 rounded-2xl flex flex-col items-center shadow-2xl">
@@ -94,7 +107,7 @@
         <!-- Toggle View Mode Button (Fixed Top Right) -->
         <button onclick="window.appActions.toggleViewMode()" id="view-mode-btn" 
             class="fixed top-4 right-4 z-50 bg-white p-2 rounded-full shadow-md border text-gray-500 hover:text-indigo-600 hover:bg-gray-50 transition-all hidden no-export">
-            <i data-lucide="eye" class="w-6 h-6"></i>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye w-6 h-6"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
 
         <!-- Dynamic Content -->
@@ -203,18 +216,18 @@
             const app = document.getElementById('app');
             if (state.isViewOnly) {
                 app.classList.add('view-only');
-                document.getElementById('view-mode-btn').innerHTML = `<i data-lucide="eye-off" class="w-6 h-6 text-indigo-600"></i>`;
+                document.getElementById('view-mode-btn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off w-6 h-6 text-indigo-600"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7c.53 0 1.05-.03 1.55-.09"/><line x1="2" x2="22" y1="2" y2="22"/></svg>`;
             } else {
                 app.classList.remove('view-only');
-                document.getElementById('view-mode-btn').innerHTML = `<i data-lucide="eye" class="w-6 h-6"></i>`;
+                document.getElementById('view-mode-btn').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye w-6 h-6"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
             }
 
             // Fix: Check if lucide is defined before calling createIcons to prevent ReferenceError
             setTimeout(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
-            }, 0);
+    if (window.lucide) {
+        window.lucide.createIcons();
+    }
+}, 0);
 
             // Show Eye Button only on Students List page
             const eyeBtn = document.getElementById('view-mode-btn');
@@ -240,7 +253,7 @@
             container.innerHTML = `
                 <header class="flex flex-col items-center justify-center mb-10 pt-8">
                     <div class="bg-indigo-600 p-4 rounded-2xl shadow-lg mb-4 transform -rotate-3">
-                        <i data-lucide="graduation-cap" class="text-white w-12 h-12"></i>
+                         <i data-lucide="graduation-cap" class="text-white w-12 h-12"></i>
                     </div>
                     <h1 class="text-3xl font-extrabold text-indigo-900">Game 24 Tracker</h1>
                     <p class="text-gray-500 text-sm mt-2">ระบบติดตามและฝึกฝนนักเรียนขาดเรียน</p>
@@ -250,7 +263,7 @@
                     <button onclick="window.appActions.setView('students')" 
                         class="w-full bg-white border-2 border-indigo-100 hover:border-indigo-500 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
                         <div class="bg-indigo-100 p-3 rounded-full group-hover:bg-indigo-600 transition-colors">
-                            <i data-lucide="users" class="w-8 h-8 text-indigo-600 group-hover:text-white"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users w-8 h-8 text-indigo-600 group-hover:text-white"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         </div>
                         <div class="text-left">
                             <h2 class="text-xl font-bold text-gray-800">รายชื่อนักเรียน</h2>
@@ -261,7 +274,7 @@
                     <button onclick="window.appActions.setView('admin')" 
                         class="w-full bg-white border-2 border-gray-100 hover:border-gray-400 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-4 group">
                         <div class="bg-gray-100 p-3 rounded-full group-hover:bg-gray-600 transition-colors">
-                            <i data-lucide="settings" class="w-8 h-8 text-gray-600 group-hover:text-white"></i>
+                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings w-8 h-8 text-gray-600 group-hover:text-white"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.35a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                         </div>
                         <div class="text-left">
                             <h2 class="text-xl font-bold text-gray-800">จัดการคลังโจทย์</h2>
@@ -285,164 +298,21 @@
         }
 
         function renderStudentList(container) {
-            // Separate lists
-            const safeStudents = state.students.filter(s => getStudentStats(s).isSafe);
-            const repairStudents = state.students.filter(s => !getStudentStats(s).isSafe);
-
-            // Sort Repair: Most repairs needed first
-            repairStudents.sort((a, b) => getStudentStats(b).remainingRepairs - getStudentStats(a).remainingRepairs);
-
-            // Sort Safe: Most absent days first (Descending)
-            safeStudents.sort((a, b) => getStudentStats(b).absentDays - getStudentStats(a).absentDays);
-
-            const renderStudentItem = (s, isSafe) => {
-                const { absentDays, leaveDays, totalAbsence, isDisqualified, remainingRepairs } = getStudentStats(s);
-
-                // Calculate Progress Bar Stats
-                const maxLimit = 20;
-                const percent = Math.min(100, (totalAbsence / maxLimit) * 100);
+            // Sort ALL students primarily by Total Absence (High to Low)
+            state.students.sort((a, b) => {
+                const statsA = getStudentStats(a);
+                const statsB = getStudentStats(b);
                 
-                // Determine Bar Color based on severity
-                let barColor = 'bg-green-500'; // Default Safe
-                if (totalAbsence > 10) barColor = 'bg-yellow-400'; // Warning
-                if (totalAbsence > 15) barColor = 'bg-orange-500'; // Danger
-                if (totalAbsence >= 20) barColor = 'bg-red-600';   // Critical/Fail
-
-                // Calculate Next Repair Level (Current State)
-                const currentClearingDay = s.currentClearingDay || 4;
-                const repairDayIndex = currentClearingDay + leaveDays;
-                const repairLevelKey = getLevelFromDayIndex(repairDayIndex);
-                const repairLevelConfig = repairLevelKey ? DIFFICULTY_CONFIG[repairLevelKey] : null;
-                
-                let forecastHtml = '';
-                let statusHtml = '';
-
-                // Logic for Status Badge and Forecast
-                if (isDisqualified) {
-                    // Disqualified Case (Dominant)
-                    statusHtml = `
-                        <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full border border-red-700 ml-1 animate-pulse shadow-sm">
-                            🚫 หมดสิทธิ์สอบ
-                        </span>`;
-                    
-                    forecastHtml = `
-                        <div class="mt-2 pt-2 border-t border-red-100 text-xs text-red-600 flex items-center gap-1 forecast-section font-bold bg-red-50 p-2 rounded-lg">
-                            <i data-lucide="alert-octagon" class="w-4 h-4"></i>
-                            <span>นักเรียนคนนี้หมดสิทธิ์สอบ (รวมขาดลาเกิน 20 วัน)</span>
-                        </div>`;
-                } else if (!isSafe) {
-                    // Not Safe (Needs Repair)
-                    statusHtml = `
-                        <span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full border border-orange-200 ml-1">
-                            เหลือต้องซ่อม ${remainingRepairs} ครั้ง
-                        </span>`;
-                    
-                    if (repairLevelConfig) {
-                        forecastHtml = `
-                            <div class="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 flex items-center gap-1 forecast-section">
-                                <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">🛠️ ซ่อมครั้งถัดไป</span>
-                                <span>จะเจอระดับ:</span>
-                                <span class="${repairLevelConfig.color.split(' ')[1]} font-bold flex items-center gap-0.5">
-                                    ${repairLevelConfig.icon} ${repairLevelConfig.label}
-                                </span>
-                            </div>`;
-                    }
-                } else {
-                    // Safe
-                    if (absentDays > 3) {
-                        // Safe but has history of repair
-                        statusHtml = `
-                            <span class="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full border border-blue-200 ml-1 flex items-center gap-1">
-                                <i data-lucide="check-check" class="w-3 h-3"></i> ซ่อมครบแล้ว
-                            </span>`;
-                    } else {
-                        // Safe and clean
-                        statusHtml = '<span class="text-green-500 flex items-center gap-1 ml-1"><i data-lucide="check-circle" class="w-4 h-4"></i> (ปลอดภัย)</span>';
-                    }
-
-                    forecastHtml = `
-                        <div class="mt-2 pt-2 border-t border-gray-100 text-xs text-green-600 flex items-center gap-1 forecast-section">
-                            <span class="bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold">✅ สถานะปกติ</span>
-                             ยังไม่มีภารกิจซ่อม
-                        </div>`;
+                // Primary Sort: Total Absence (Descending)
+                if (statsB.totalAbsence !== statsA.totalAbsence) {
+                    return statsB.totalAbsence - statsA.totalAbsence;
                 }
+                // Secondary Sort: Absent Days (Descending)
+                return statsB.absentDays - statsA.absentDays;
+            });
 
-                return `
-                <div class="bg-white border rounded-xl p-4 shadow-sm mb-3 hover:shadow-md transition-shadow group">
-                    <div class="flex justify-between items-start">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <!-- Click name to view History -->
-                                <h3 class="font-bold text-lg text-gray-800 cursor-pointer hover:text-indigo-600 hover:underline decoration-dotted underline-offset-4 transition-colors" 
-                                    onclick="window.appActions.viewHistory('${s.id}')" title="ดูประวัติการซ่อม">
-                                    ${s.name}
-                                </h3>
-                                <!-- Edit Button (Hidden on Export/ViewOnly) -->
-                                <button onclick="window.appActions.editStudent('${s.id}', '${s.name}', ${absentDays}, ${leaveDays})" 
-                                    class="text-gray-300 hover:text-indigo-500 p-1 rounded-full hover:bg-gray-100 transition-all no-export no-view-only" title="แก้ไขข้อมูล">
-                                    <i data-lucide="pencil" class="w-3 h-3"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Total Absence Line with Progress Bar -->
-                            <div class="mb-3">
-                                <div class="text-xs text-gray-500 mb-1 font-mono flex justify-between items-center">
-                                    <span>รวมขาดลา: <span class="${isDisqualified ? 'text-red-600 font-bold' : 'text-gray-700 font-bold'}">${totalAbsence}</span> / 20 วัน</span>
-                                    <span class="text-[10px] text-gray-400">${percent.toFixed(0)}%</span>
-                                </div>
-                                <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                                    <div class="h-full rounded-full ${barColor} transition-all duration-500 ease-out" style="width: ${percent}%"></div>
-                                </div>
-                            </div>
-
-                            <div class="text-sm flex flex-col gap-1">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <span class="${isSafe ? 'text-green-600' : 'text-red-600'} font-bold">
-                                        ขาด ${absentDays} วัน
-                                    </span>
-                                    <!-- Buttons: -1 and +1 (Hidden on Export/ViewOnly) -->
-                                    <div class="flex items-center gap-1 no-export no-view-only">
-                                        <button onclick="window.appActions.adjustDays('${s.id}', 'absent', -1)" class="bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-full w-6 h-6 flex items-center justify-center text-xs border active:bg-gray-300 transition-colors" title="ลดวันขาด">-1</button>
-                                        <button onclick="window.appActions.adjustDays('${s.id}', 'absent', 1)" class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs border active:bg-gray-300 transition-colors" title="เพิ่มวันขาด">+1</button>
-                                    </div>
-
-                                    ${statusHtml}
-                                </div>
-                                <div class="text-gray-500 text-xs flex items-center gap-1">
-                                    <i data-lucide="calendar-off" class="w-3 h-3"></i> ลา ${leaveDays} วัน
-                                    <!-- Buttons: - and + (Hidden on Export/ViewOnly) -->
-                                    <div class="flex items-center gap-1 no-export no-view-only">
-                                        <button onclick="window.appActions.adjustDays('${s.id}', 'leave', -1)" class="bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px] border active:bg-gray-300 transition-colors" title="ลดวันลา">-</button>
-                                        <button onclick="window.appActions.adjustDays('${s.id}', 'leave', 1)" class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px] border active:bg-gray-300 transition-colors" title="เพิ่มวันลา">+</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2 border-l pl-3 ml-2 no-export no-view-only">
-                                ${(!isSafe) ? `
-                                <button onclick="window.appActions.selectStudent('${s.id}')" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 shadow-sm" title="เริ่มเล่น">
-                                    <i data-lucide="play" class="w-5 h-5"></i>
-                                </button>
-                                ` : ''}
-                                <button onclick="window.appActions.deleteStudent('${s.id}')" class="text-gray-400 hover:text-red-500 p-2" title="ลบชื่อ">
-                                <i data-lucide="trash-2" class="w-5 h-5"></i>
-                                </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Forecast Section -->
-                    ${forecastHtml}
-                </div>
-                `;
-            };
-
-            const repairHtml = repairStudents.length > 0 
-                ? repairStudents.map(s => renderStudentItem(s, false)).join('') 
-                : `<div class="text-center text-gray-400 py-4 bg-gray-50 rounded-lg border border-dashed">ไม่มีนักเรียนที่ต้องซ่อม</div>`;
-
-            const safeHtml = safeStudents.length > 0
-                ? safeStudents.map(s => renderStudentItem(s, true)).join('')
-                : `<div class="text-center text-gray-400 py-4">ไม่มีนักเรียนที่ปลอดภัย</div>`;
+            // No separate lists anymore, render everyone in one go
+            const studentItemsHtml = state.students.map(s => renderStudentItem(s)).join('');
 
             container.innerHTML = `
                 <div class="flex flex-col gap-4 mb-6 no-export no-view-only">
@@ -501,21 +371,8 @@
                     </div>
 
                     <div>
-                        <h3 class="font-bold text-red-600 mb-3 px-1 flex items-center gap-2 bg-red-50 p-2 rounded-lg inline-block">
-                            <i data-lucide="alert-circle" class="w-5 h-5"></i> ต้องซ่อมกิจกรรม (${repairStudents.length})
-                        </h3>
-                        <div class="space-y-2">
-                            ${repairHtml}
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h3 class="font-bold text-green-600 mb-3 px-1 flex items-center gap-2 border-t pt-6 inline-block">
-                            <i data-lucide="shield-check" class="w-5 h-5"></i> ผ่านเกณฑ์ / ปลอดภัย (${safeStudents.length})
-                        </h3>
-                         <div class="space-y-2">
-                            ${safeHtml}
-                        </div>
+                        <!-- Combined List sorted by Total Absence -->
+                        ${studentItemsHtml}
                     </div>
                     
                     <div class="text-center text-gray-400 text-xs mt-8 pb-4 border-t pt-4">
@@ -531,65 +388,212 @@
             }
         }
 
-        function renderStudentHistory(container) {
-            const student = getCurrentStudent();
-            if (!student) { window.appActions.setView('students'); return; }
-            
-            const history = student.history || [];
-            // Show newest first
-            const reversedHistory = [...history].reverse();
+        // Helper function to render a single student item (extracted from renderStudentList)
+        function renderStudentItem(s) {
+            const { absentDays, leaveDays, totalAbsence, isDisqualified, remainingRepairs, isSafe } = getStudentStats(s);
 
-            const historyHtml = reversedHistory.length === 0 
-                ? `<div class="flex flex-col items-center justify-center py-10 text-gray-400 border-2 border-dashed rounded-xl">
-                     <i data-lucide="history" class="w-10 h-10 mb-2 opacity-50"></i>
-                     <p>ยังไม่มีประวัติการซ่อม</p>
-                   </div>`
-                : reversedHistory.map(h => {
-                    const config = DIFFICULTY_CONFIG[h.level] || { label: 'ไม่ระบุ', color: 'bg-gray-100 text-gray-800', icon: '?' };
-                    return `
-                    <div class="bg-white border p-4 rounded-xl shadow-sm mb-3 flex justify-between items-center hover:shadow-md transition-all">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl bg-gray-50 border shadow-sm">
-                                ${config.icon}
+            // Calculate Progress Bar Stats
+            const maxLimit = 20;
+            const percent = Math.min(100, (totalAbsence / maxLimit) * 100);
+            
+            // Determine Bar Color based on severity
+            let barColor = 'bg-green-500'; // Default Safe
+            if (totalAbsence > 10) barColor = 'bg-yellow-400'; // Warning
+            if (totalAbsence > 15) barColor = 'bg-orange-500'; // Danger
+            if (totalAbsence >= 20) barColor = 'bg-red-600';   // Critical/Fail
+
+            // Calculate Next Repair Level (Current State)
+            const currentClearingDay = s.currentClearingDay || 4;
+            const repairDayIndex = currentClearingDay + leaveDays;
+            const repairLevelKey = getLevelFromDayIndex(repairDayIndex);
+            const repairLevelConfig = repairLevelKey ? DIFFICULTY_CONFIG[repairLevelKey] : null;
+            
+            let forecastHtml = '';
+            let statusHtml = '';
+            let absenceWarning = '';
+
+            // Determine Absence Warning with Logic:
+            // If Total > 10 AND (Leave > Absent) -> Warn about Leave
+            // If Total > 10 AND (Absent >= Leave) -> Warn about Absent
+            // If Total >= 16 -> Danger (Both)
+
+            if (totalAbsence >= 16) {
+                 absenceWarning = `<div class="mt-1 text-orange-600 bg-orange-50 px-2 py-1 rounded flex items-center gap-1 font-bold"><i data-lucide="alert-triangle" class="w-3 h-3"></i> อันตราย! ใกล้หมดสิทธิ์สอบ (${totalAbsence}/20)</div>`;
+            } else if (totalAbsence > 10) {
+                 // Check majority reason
+                 if (leaveDays > absentDays) {
+                     absenceWarning = `<div class="mt-1 text-yellow-700 bg-yellow-50 px-2 py-1 rounded flex items-center gap-1 font-bold"><i data-lucide="alert-circle" class="w-3 h-3"></i> เฝ้าระวัง! ขาดลาเยอะ (${totalAbsence}/20)</div>`;
+                 } else {
+                     absenceWarning = `<div class="mt-1 text-yellow-700 bg-yellow-50 px-2 py-1 rounded flex items-center gap-1 font-bold"><i data-lucide="alert-circle" class="w-3 h-3"></i> เฝ้าระวัง! ขาดเรียนเยอะ (${totalAbsence}/20)</div>`;
+                 }
+            }
+
+
+            // Logic for Status Badge and Forecast
+            if (isDisqualified) {
+                // Disqualified Case (Dominant)
+                statusHtml = `
+                    <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full border border-red-700 ml-1 animate-pulse shadow-sm">
+                        🚫 หมดสิทธิ์สอบ
+                    </span>`;
+                
+                forecastHtml = `
+                    <div class="mt-2 pt-2 border-t border-red-100 text-xs text-red-600 flex items-center gap-1 forecast-section font-bold bg-red-50 p-2 rounded-lg">
+                        <i data-lucide="alert-octagon" class="w-4 h-4"></i>
+                        <span>นักเรียนคนนี้หมดสิทธิ์สอบ (รวมขาดลาเกิน 20 วัน)</span>
+                    </div>`;
+            } else if (!isSafe) {
+                // Not Safe (Needs Repair)
+                statusHtml = `
+                    <span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full border border-orange-200 ml-1">
+                        เหลือต้องซ่อม ${remainingRepairs} ครั้ง
+                    </span>`;
+                
+                if (repairLevelConfig) {
+                    // Customized warning based on zones
+                    let repairWarning = '';
+                    if (totalAbsence >= 16) {
+                         repairWarning = `<div class="mt-1 text-orange-600 bg-orange-50 px-2 py-1 rounded flex items-center gap-1 font-bold"><i data-lucide="flame" class="w-3 h-3"></i> 🔥 อันตราย! ใกล้หมดสิทธิ์สอบ</div>`;
+                    } else if (totalAbsence > 10) {
+                         // Check majority again for Repair Warning
+                         if (leaveDays > absentDays) {
+                            repairWarning = `<div class="mt-1 text-yellow-700 bg-yellow-50 px-2 py-1 rounded flex items-center gap-1 font-bold"><i data-lucide="alert-circle" class="w-3 h-3"></i> ⚠️ เฝ้าระวัง! ขาดลาเยอะ</div>`;
+                         } else {
+                            repairWarning = `<div class="mt-1 text-yellow-700 bg-yellow-50 px-2 py-1 rounded flex items-center gap-1 font-bold"><i data-lucide="alert-circle" class="w-3 h-3"></i> ⚠️ เฝ้าระวัง! ขาดเรียนเยอะ</div>`;
+                         }
+                    }
+
+                    forecastHtml = `
+                        <div class="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500 forecast-section">
+                            <div class="flex items-center gap-1 mb-1">
+                                <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">🛠️ ซ่อมครั้งถัดไป</span>
+                                <span>จะเจอระดับ:</span>
+                                <span class="${repairLevelConfig.color.split(' ')[1]} font-bold flex items-center gap-0.5">
+                                    ${repairLevelConfig.icon} ${repairLevelConfig.label}
+                                </span>
+                                ${repairWarning}
                             </div>
-                            <div>
-                                <div class="font-bold text-gray-800 text-xl font-mono tracking-widest">${h.question}</div>
-                                <div class="text-xs ${config.color.replace('bg-', 'text-').split(' ')[0]} font-bold bg-opacity-10 px-2 py-0.5 rounded-full inline-block mt-1 bg-gray-100 border border-gray-200">
-                                    ระดับ: ${config.label}
+                        </div>`;
+                }
+            } else {
+                // Safe
+                if (totalAbsence >= 16) {
+                     // Safe but high absences (Danger Zone)
+                    statusHtml = `
+                        <span class="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full border border-orange-200 ml-1 flex items-center gap-1 font-bold">
+                            <i data-lucide="alert-triangle" class="w-3 h-3"></i> อันตราย (ใกล้หมดสิทธิ์)
+                        </span>`;
+                    
+                    forecastHtml = `
+                        <div class="mt-2 pt-2 border-t border-orange-100 text-xs text-orange-700 flex items-center gap-1 forecast-section bg-orange-50 p-1.5 rounded">
+                            <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+                            <span>ซ่อมครบแล้ว แต่ใกล้หมดสิทธิ์สอบแล้ว</span>
+                        </div>`;
+                }
+                else if (totalAbsence > 10) {
+                    // Safe but high absences (Warning Zone)
+                    statusHtml = `
+                        <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full border border-yellow-200 ml-1 flex items-center gap-1 font-bold">
+                            <i data-lucide="alert-circle" class="w-3 h-3"></i> เฝ้าระวัง (เวลาเรียนน้อย)
+                        </span>`;
+                    
+                    let warningText = "ซ่อมครบแล้ว แต่เวลาเรียนเริ่มน้อย";
+                    if (leaveDays > absentDays) warningText = "ซ่อมครบแล้ว แต่ลาบ่อย ระวังเวลาเรียนไม่พอ";
+                    else warningText = "ซ่อมครบแล้ว แต่ขาดบ่อย ระวังเวลาเรียนไม่พอ";
+
+                    forecastHtml = `
+                        <div class="mt-2 pt-2 border-t border-yellow-100 text-xs text-yellow-700 flex items-center gap-1 forecast-section bg-yellow-50 p-1.5 rounded">
+                            <i data-lucide="info" class="w-3 h-3"></i>
+                            <span>${warningText}</span>
+                        </div>`;
+                } else if (absentDays > 3) {
+                    // Safe but has history of repair
+                    statusHtml = `
+                        <span class="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full border border-blue-200 ml-1 flex items-center gap-1">
+                            <i data-lucide="check-check" class="w-3 h-3"></i> ซ่อมครบแล้ว
+                        </span>`;
+                    forecastHtml = `
+                        <div class="mt-2 pt-2 border-t border-gray-100 text-xs text-green-600 flex items-center gap-1 forecast-section">
+                            <span class="bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold">✅ สถานะปกติ</span>
+                             ยังไม่มีภารกิจซ่อม
+                        </div>`;
+                } else {
+                    // Safe and clean
+                    statusHtml = '<span class="text-green-500 flex items-center gap-1 ml-1"><i data-lucide="check-circle" class="w-4 h-4"></i> (ปลอดภัย)</span>';
+                    forecastHtml = `
+                        <div class="mt-2 pt-2 border-t border-gray-100 text-xs text-green-600 flex items-center gap-1 forecast-section">
+                            <span class="bg-green-50 px-1.5 py-0.5 rounded text-[10px] font-bold">✅ สถานะปกติ</span>
+                             ยังไม่มีภารกิจซ่อม
+                        </div>`;
+                }
+            }
+
+            return `
+            <div class="bg-white border rounded-xl p-4 shadow-sm mb-3 hover:shadow-md transition-shadow group">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <!-- Click name to view History -->
+                            <h3 class="font-bold text-lg text-gray-800 cursor-pointer hover:text-indigo-600 hover:underline decoration-dotted underline-offset-4 transition-colors" 
+                                onclick="window.appActions.viewHistory('${s.id}')" title="ดูประวัติการซ่อม">
+                                ${s.name}
+                            </h3>
+                            <!-- Edit Button (Hidden on Export/ViewOnly) -->
+                            <button onclick="window.appActions.editStudent('${s.id}', '${s.name}', ${absentDays}, ${leaveDays})" 
+                                class="text-gray-300 hover:text-indigo-500 p-1 rounded-full hover:bg-gray-100 transition-all no-export no-view-only" title="แก้ไขข้อมูล">
+                                <i data-lucide="pencil" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Total Absence Line with Progress Bar -->
+                        <div class="mb-3">
+                            <div class="text-xs text-gray-500 mb-1 font-mono flex justify-between items-center">
+                                <span>รวมขาดลา: <span class="${isDisqualified ? 'text-red-600 font-bold' : 'text-gray-700 font-bold'}">${totalAbsence}</span> / 20 วัน</span>
+                                <span class="text-[10px] text-gray-400">${percent.toFixed(0)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div class="h-full rounded-full ${barColor} transition-all duration-500 ease-out" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="text-sm flex flex-col gap-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="${isSafe ? 'text-green-600' : 'text-red-600'} font-bold">
+                                    ขาด ${absentDays} วัน
+                                </span>
+                                <!-- Buttons: -1 and +1 (Hidden on Export/ViewOnly) -->
+                                <div class="flex items-center gap-1 no-export no-view-only">
+                                    <button onclick="window.appActions.adjustDays('${s.id}', 'absent', -1)" class="bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-full w-6 h-6 flex items-center justify-center text-xs border active:bg-gray-300 transition-colors" title="ลดวันขาด">-1</button>
+                                    <button onclick="window.appActions.adjustDays('${s.id}', 'absent', 1)" class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-6 h-6 flex items-center justify-center text-xs border active:bg-gray-300 transition-colors" title="เพิ่มวันขาด">+1</button>
+                                </div>
+
+                                ${statusHtml}
+                            </div>
+                            <div class="text-gray-500 text-xs flex items-center gap-1">
+                                <i data-lucide="calendar-off" class="w-3 h-3"></i> ลา ${leaveDays} วัน
+                                <!-- Buttons: - and + (Hidden on Export/ViewOnly) -->
+                                <div class="flex items-center gap-1 no-export no-view-only">
+                                    <button onclick="window.appActions.adjustDays('${s.id}', 'leave', -1)" class="bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px] border active:bg-gray-300 transition-colors" title="ลดวันลา">-</button>
+                                    <button onclick="window.appActions.adjustDays('${s.id}', 'leave', 1)" class="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full w-5 h-5 flex items-center justify-center text-[10px] border active:bg-gray-300 transition-colors" title="เพิ่มวันลา">+</button>
                                 </div>
                             </div>
                         </div>
-                         <div class="text-xs text-gray-400 text-right">
-                            <div>${new Date(h.date).toLocaleDateString('th-TH', {day: 'numeric', month: 'short', year: '2-digit'})}</div>
-                            <div>${new Date(h.date).toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'})}</div>
-                        </div>
                     </div>
-                    `;
-                }).join('');
-
-            container.innerHTML = `
-                <div class="flex items-center gap-4 mb-6 sticky top-0 bg-gray-50 py-2 z-10">
-                    <button onclick="window.appActions.setView('students')" class="p-2 hover:bg-gray-200 rounded-full bg-white shadow-sm transition-colors"><i data-lucide="arrow-left"></i></button>
-                    <h1 class="text-2xl font-bold text-gray-800">ประวัติการซ่อม</h1>
+                    <div class="flex items-center gap-2 border-l pl-3 ml-2 no-export no-view-only">
+                            ${(!isSafe) ? `
+                            <button onclick="window.appActions.selectStudent('${s.id}')" class="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 shadow-sm" title="เริ่มเล่น">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play w-5 h-5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </button>
+                            ` : ''}
+                            <button onclick="window.appActions.deleteStudent('${s.id}')" class="text-gray-400 hover:text-red-500 p-2" title="ลบชื่อ">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2 w-5 h-5"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                            </button>
+                    </div>
                 </div>
                 
-                <div class="bg-indigo-600 text-white p-6 rounded-2xl mb-6 flex items-center gap-4 shadow-lg relative overflow-hidden">
-                    <div class="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4">
-                        <i data-lucide="award" class="w-32 h-32"></i>
-                    </div>
-                    <div class="bg-white/20 p-3 rounded-full backdrop-blur-sm">
-                        <i data-lucide="user" class="w-8 h-8 text-white"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <h2 class="font-bold text-xl">${student.name}</h2>
-                        <p class="text-indigo-100 text-sm flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> ซ่อมสำเร็จแล้ว ${student.completedRepairs || 0} ครั้ง</p>
-                    </div>
-                </div>
-
-                <div class="space-y-1 pb-10">
-                    <h3 class="font-bold text-gray-500 text-sm mb-2 px-1">รายการโจทย์ที่ทำผ่าน</h3>
-                    ${historyHtml}
-                </div>
+                <!-- Forecast Section -->
+                ${forecastHtml}
+            </div>
             `;
         }
 
@@ -940,7 +944,7 @@
                 
                 // 1. Capture Info for History BEFORE incrementing
                 const currentClearingDay = student.currentClearingDay || 4;
-                const effectiveDayIndex = student.leaveDays || 0;
+                const effectiveDayIndex = currentClearingDay + (student.leaveDays || 0);
                 const levelKey = getLevelFromDayIndex(effectiveDayIndex);
                 const questionData = {
                     question: state.currentCard,
